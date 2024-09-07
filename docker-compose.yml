@@ -1,0 +1,190 @@
+version: "3"
+
+services:
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    env_file: ".env"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TIMEZONE}
+      - WEBUI_PORT=8080
+      - TORRENTING_PORT=6881
+    volumes:
+      - ${CONFIG_FOLDER}/qbittorrent:/config
+      - ${TORRENTS_FOLDER}:/downloads
+      - ${MEDIA_FOLDER}:/media
+    ports:
+      - 8080:8080
+      - 6881:6881
+      - 6881:6881/udp
+    networks:
+      - media-network
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  jackett:
+    image: lscr.io/linuxserver/jackett:latest
+    container_name: jackett
+    env_file: ".env"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TIMEZONE}
+      - AUTO_UPDATE=true #optional
+    volumes:
+      - ${CONFIG_FOLDER}/jackett:/config
+      - ${TORRENTS_FOLDER}:/downloads
+    ports:
+      - 9117:9117
+    networks:
+      - media-network
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    env_file: ".env"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TIMEZONE}
+    volumes:
+      - ${CONFIG_FOLDER}/bazarr:/config
+      - ${MEDIA_FOLDER}/movies:/movies
+      - ${MEDIA_FOLDER}/tv:/tv
+    ports:
+      - 6767:6767
+    networks:
+      - media-network
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    env_file: ".env"
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_HTML=${LOG_HTML:-false}
+      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
+      - TZ=${TIMEZONE}
+    ports:
+      - "${PORT:-8191}:8191"
+    networks:
+      - media-network
+    restart: unless-stopped
+
+  homarr:
+    container_name: homarr
+    env_file: ".env"
+    image: ghcr.io/ajnart/homarr:latest
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CONFIG_FOLDER}/homarr/configs:/app/data/configs
+      - ${DATA_FOLDER}/homarr/icons:/app/public/icons
+      - ${DATA_FOLDER}/homarr/data:/data
+    ports:
+      - "7575:7575"
+    networks:
+      - media-network
+
+  overseerr:
+    image: lscr.io/linuxserver/overseerr:latest
+    container_name: overseerr
+    env_file: ".env"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TIMEZONE}
+    volumes:
+      - ${CONFIG_FOLDER}/overseerr:/config
+    ports:
+      - 5055:5055
+    networks:
+      - media-network
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    env_file: ".env"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TIMEZONE}
+    volumes:
+      - ${CONFIG_FOLDER}/prowlarr:/config
+    ports:
+      - 9696:9696
+    networks:
+      - media-network
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    env_file: ".env"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=Etc/UTC
+    volumes:
+      - ${CONFIG_FOLDER}/radarr:/config
+      - ${MEDIA_FOLDER}/movies:/movies
+      - ${TORRENTS_FOLDER}:/downloads
+    ports:
+      - 7878:7878
+    networks:
+      - media-network
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    env_file: ".env"
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TIMEZONE}
+    volumes:
+      - ${CONFIG_FOLDER}/sonarr:/config
+      - ${MEDIA_FOLDER}/tv:/tv
+      - ${TORRENTS_FOLDER}:/downloads
+    ports:
+      - 8989:8989
+    networks:
+      - media-network
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    environment:
+      - WATCHTOWER_LABEL_ENABLE=true
+      - WATCHTOWER_CLEANUP=true
+      - TZ=${TIMEZONE}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - media-network
+    command: --interval 300 --cleanup --label-enable
+    restart: unless-stopped
+
+networks:
+  media-network:
+    external: true
